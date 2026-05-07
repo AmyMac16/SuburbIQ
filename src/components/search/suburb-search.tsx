@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Search } from "lucide-react";
-import { nzSuburbs } from "@/data/nz-suburbs";
+import { searchSuburbs } from "@/services/suburbs";
 
 interface Props {
   onSelect: (suburb: any) => void;
@@ -10,41 +10,25 @@ interface Props {
 
 export default function SuburbSearch({ onSelect }: Props) {
   const [query, setQuery] = useState("");
+  const [results, setResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const filtered = useMemo(() => {
-    if (!query) return [];
+  async function handleSearch(value: string) {
+    setQuery(value);
 
-    const search = query.toLowerCase();
+    if (value.length < 2) {
+      setResults([]);
+      return;
+    }
 
-    return nzSuburbs
-      .map((suburb) => {
-        const suburbMatch =
-          suburb.suburb_name.toLowerCase().startsWith(search);
+    setLoading(true);
 
-        const cityMatch =
-          suburb.city.toLowerCase().startsWith(search);
+    const suburbs = await searchSuburbs(value);
 
-        let score = 0;
+    setResults(suburbs);
 
-        if (suburbMatch) score += 100;
-        if (cityMatch) score += 50;
-
-        if (
-          suburb.suburb_name.toLowerCase().includes(search)
-        ) {
-          score += 25;
-        }
-
-        return {
-          suburb,
-          score,
-        };
-      })
-      .filter((item) => item.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 12)
-      .map((item) => item.suburb);
-  }, [query]);
+    setLoading(false);
+  }
 
   return (
     <div className="relative">
@@ -54,16 +38,22 @@ export default function SuburbSearch({ onSelect }: Props) {
 
           <input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => handleSearch(e.target.value)}
             placeholder="Search any NZ suburb..."
             className="w-full bg-black border border-zinc-800 rounded-xl pl-12 pr-5 py-4 outline-none focus:border-lime-400"
           />
         </div>
       </div>
 
-      {filtered.length > 0 && (
+      {loading && (
+        <div className="absolute w-full mt-2 bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-sm text-zinc-500">
+          Searching suburbs...
+        </div>
+      )}
+
+      {results.length > 0 && (
         <div className="absolute w-full mt-2 bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden z-50">
-          {filtered.map((suburb) => (
+          {results.map((suburb) => (
             <button
               key={suburb.id}
               onClick={() => {
@@ -77,7 +67,7 @@ export default function SuburbSearch({ onSelect }: Props) {
               </div>
 
               <div className="text-sm text-zinc-500">
-                {suburb.suburb_name} • {suburb.city}, {suburb.region}
+                {suburb.city} • {suburb.region}
               </div>
             </button>
           ))}
