@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
-import { mockSuburbs } from "@/lib/mock-suburbs";
+import { nzSuburbs } from "@/data/nz-suburbs";
 
 interface Props {
   onSelect: (suburb: any) => void;
@@ -14,9 +14,36 @@ export default function SuburbSearch({ onSelect }: Props) {
   const filtered = useMemo(() => {
     if (!query) return [];
 
-    return mockSuburbs.filter((suburb) =>
-      suburb.suburb_name.toLowerCase().includes(query.toLowerCase())
-    );
+    const search = query.toLowerCase();
+
+    return nzSuburbs
+      .map((suburb) => {
+        const suburbMatch =
+          suburb.suburb_name.toLowerCase().startsWith(search);
+
+        const cityMatch =
+          suburb.city.toLowerCase().startsWith(search);
+
+        let score = 0;
+
+        if (suburbMatch) score += 100;
+        if (cityMatch) score += 50;
+
+        if (
+          suburb.suburb_name.toLowerCase().includes(search)
+        ) {
+          score += 25;
+        }
+
+        return {
+          suburb,
+          score,
+        };
+      })
+      .filter((item) => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 12)
+      .map((item) => item.suburb);
   }, [query]);
 
   return (
@@ -50,7 +77,7 @@ export default function SuburbSearch({ onSelect }: Props) {
               </div>
 
               <div className="text-sm text-zinc-500">
-                {suburb.city}, {suburb.region}
+                {suburb.suburb_name} • {suburb.city}, {suburb.region}
               </div>
             </button>
           ))}
